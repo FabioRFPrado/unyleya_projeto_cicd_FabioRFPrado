@@ -1,0 +1,74 @@
+﻿# Codigo Terraform para provisionamento
+# Atividade 4
+
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"  
+      version = "~> 2.65"
+    }
+  }
+
+  required_version = ">= 0.14.9"
+}
+
+provider "azurerm" {
+  features {}
+}
+
+
+resource "azurerm_resource_group" "ativ4" {
+  name     = "ativ4-resources"
+  location = "West Europe"
+}
+
+resource "azurerm_virtual_network" "ativ4" {
+  name                = "ativ4-network"
+  resource_group_name = azurerm_resource_group.ativ4.name
+  location            = azurerm_resource_group.ativ4.location
+  address_space       = ["10.0.0.0/16"]
+}
+
+
+resource "azurerm_app_service_plan" "windows_asp_net" {
+  name                = "windows-asp.net-appserviceplan"
+  location            = azurerm_resource_group.ativ4.location
+  resource_group_name = azurerm_resource_group.ativ4.name
+
+  sku {
+    tier = "Standard"
+    size = "S1"
+  }
+}
+
+resource "azurerm_app_service" "windows_asp_net" {
+  name                = "windows-asp.net-app-service"
+  location            = azurerm_resource_group.ativ4.location
+  resource_group_name = azurerm_resource_group.ativ4.name
+  app_service_plan_id = azurerm_app_service_plan.windows_asp_net.id
+
+  site_config {
+    dotnet_framework_version = "v4.0"
+    scm_type                 = "LocalGit"
+  }
+
+  app_settings = {
+    "SOME_KEY" = "some-value"
+  }
+
+  connection_string {
+    name  = "Database"
+    type  = "SQLServer"
+    value = "Server=some-server.mydomain.com;Integrated Security=SSPI"
+  }
+}
+
+data "azurerm_app_service" "windows_asp_net" {
+  name                = "search-app-service"
+  resource_group_name = "search-service"
+}
+
+output "app_service_id" {
+  value = data.azurerm_app_service.windows_asp_net.id
+}
+
